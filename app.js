@@ -1,7 +1,9 @@
-/* --- IMPORTAÇÕES DO FIREBASE (Via CDN Modular) --- */
+/* --- IMPORTAÇÕES DO FIREBASE --- */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getFirestore, collection, getDocs, addDoc, updateDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { getAuth, signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+// Importamos o Storage
+import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
 /* --- CONFIGURAÇÃO --- */
 const firebaseConfig = {
@@ -14,10 +16,10 @@ const firebaseConfig = {
     measurementId: "G-P61PNL7H7Z"
 };
 
-// Inicializa Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
+const storage = getStorage(app); // Inicializa Storage
 
 const COLLECTION_NAME = 'processos';
 
@@ -41,7 +43,7 @@ function showToast(message) {
 function toggleLoading(isLoading) {
     const tableBody = document.getElementById('table-body') || document.getElementById('rep-body');
     if (tableBody && isLoading) {
-        tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px;">🔄 Carregando dados...</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px;">🔄 Carregando dados...</td></tr>';
     }
 }
 
@@ -57,27 +59,50 @@ const Service = {
             return lista;
         } catch (error) {
             console.error("Erro ao buscar dados:", error);
-            showToast("Erro de conexão. Verifique se você está logado.");
             return [];
         }
     },
 
-    salvarProcesso: async(id, numero, responsavel, status) => {
+    // Função dedicada ao Upload
+    uploadArquivo: async(arquivo) => {
+        if (!arquivo) return null;
+        try {
+            // Cria uma referência única: uploads/nome-do-arquivo-timestamp
+            const storageRef = ref(storage, `uploads/${Date.now()}-${arquivo.name}`);
+            const snapshot = await uploadBytes(storageRef, arquivo);
+            const downloadURL = await getDownloadURL(snapshot.ref);
+            return downloadURL;
+        } catch (error) {
+            console.error("Erro no upload:", error);
+            throw new Error("Falha ao subir anexo");
+        }
+    },
+
+    salvarProcesso: async(id, numero, responsavel, status, anexoUrl) => {
         try {
             const dados = { numero, responsavel, status };
+
+            // Só atualiza a URL se um novo arquivo foi enviado (anexoUrl não nulo)
+            // Se for undefined, o Firebase ignora no update, mantendo o antigo.
+            if (anexoUrl) {
+                dados.anexoUrl = anexoUrl;
+            }
+
             if (id) {
                 const docRef = doc(db, COLLECTION_NAME, id);
                 await updateDoc(docRef, dados);
                 showToast("Processo atualizado!");
             } else {
                 dados.dataEntrada = new Date().toISOString().split('T')[0];
+                // Se for novo e não tiver anexo, salva vazio
+                if (!dados.anexoUrl) dados.anexoUrl = "";
                 await addDoc(collection(db, COLLECTION_NAME), dados);
                 showToast("Novo processo criado!");
             }
             return true;
         } catch (e) {
             console.error("Erro ao salvar:", e);
-            showToast("Erro ao salvar. Permissão negada?");
+            showToast("Erro ao salvar no banco.");
             return false;
         }
     },
@@ -111,14 +136,12 @@ window.addEventListener('load', () => {
 
 /* --- LÓGICA: LOGIN --- */
 function initLogin() {
-    // Login com Email/Senha (Simples)
     const formLogin = document.getElementById('form-login');
     if (formLogin) {
         formLogin.addEventListener('submit', async(e) => {
             e.preventDefault();
             const email = document.getElementById('email').value;
             const pass = document.getElementById('password').value;
-
             try {
                 await signInWithEmailAndPassword(auth, email, pass);
                 window.location.href = 'dashboard.html';
@@ -128,7 +151,6 @@ function initLogin() {
         });
     }
 
-    // Login com Google
     const btnGoogle = document.getElementById('btn-google');
     if (btnGoogle) {
         btnGoogle.addEventListener('click', async() => {
@@ -172,21 +194,37 @@ function setupModal(listaAtual) {
             e.preventDefault();
             const btnSave = newForm.querySelector('button[type="submit"]');
             const originalText = btnSave.innerText;
-            btnSave.innerText = "Salvando...";
+
+            // Feedback de Upload
+            btnSave.innerText = "Subindo anexo e salvando...";
             btnSave.disabled = true;
 
             const id = document.getElementById('inp-id').value;
             const num = document.getElementById('inp-numero').value;
             const resp = document.getElementById('inp-resp').value;
             const status = document.getElementById('inp-status').value;
+            const arquivoInput = document.getElementById('inp-anexo');
 
-            const sucesso = await Service.salvarProcesso(id, num, resp, status);
-            if (sucesso) {
-                modal.classList.add('hidden');
-                initDashboard();
+            try {
+                // 1. Tenta fazer upload se tiver arquivo
+                let urlAnexo = null;
+                if (arquivoInput.files.length > 0) {
+                    urlAnexo = await Service.uploadArquivo(arquivoInput.files[0]);
+                }
+
+                // 2. Salva no banco (com ou sem url nova)
+                const sucesso = await Service.salvarProcesso(id, num, resp, status, urlAnexo);
+
+                if (sucesso) {
+                    modal.classList.add('hidden');
+                    initDashboard();
+                }
+            } catch (error) {
+                showToast("Erro: " + error.message);
+            } finally {
+                btnSave.innerText = originalText;
+                btnSave.disabled = false;
             }
-            btnSave.innerText = originalText;
-            btnSave.disabled = false;
         });
     }
 }
@@ -194,8 +232,12 @@ function setupModal(listaAtual) {
 function openModal(proc = null) {
     const modal = document.getElementById('modal-novo');
     const title = document.getElementById('modal-title');
-    document.getElementById('form-processo').reset();
+    const form = document.getElementById('form-processo');
+    const linkDiv = document.getElementById('link-atual');
+
+    form.reset();
     document.getElementById('inp-id').value = "";
+    linkDiv.innerHTML = ""; // Limpa aviso de link
 
     if (proc) {
         title.innerText = "Editar Processo";
@@ -203,13 +245,17 @@ function openModal(proc = null) {
         document.getElementById('inp-numero').value = proc.numero;
         document.getElementById('inp-resp').value = proc.responsavel;
         document.getElementById('inp-status').value = proc.status;
+
+        // Mostra se já tem anexo
+        if (proc.anexoUrl) {
+            linkDiv.innerHTML = `📎 Este processo já possui um anexo salvo. Enviar outro irá substituir.`;
+        }
     } else {
         title.innerText = "Novo Processo";
     }
     modal.classList.remove('hidden');
 }
 
-// Tornar global para acesso via onclick no HTML (necessário por ser module)
 window.editarProcesso = async function(id) {
     const lista = await Service.getAllData();
     const proc = lista.find(p => p.id === id);
@@ -231,19 +277,27 @@ function renderTable(lista) {
     tbody.innerHTML = '';
 
     if (lista.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#999; padding: 30px;">Nenhum processo encontrado.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#999; padding: 30px;">Nenhum processo encontrado.</td></tr>`;
         return;
     }
 
     const editIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>`;
 
     lista.forEach(p => {
+        // Lógica do botão de anexo
+        let anexoBtn = '<span style="color:#ccc; font-size:0.8rem;">Sem anexo</span>';
+        if (p.anexoUrl) {
+            // target="_blank" abre em outra aba/tela
+            anexoBtn = `<a href="${p.anexoUrl}" target="_blank" class="btn btn-sm" style="font-size:0.75rem; padding:4px 8px;">📎 Ver Arquivo</a>`;
+        }
+
         tbody.innerHTML += `
             <tr>
                 <td><strong>${p.numero}</strong></td>
                 <td>${formatData(p.dataEntrada)}</td>
                 <td>${p.responsavel}</td>
                 <td><span class="badge badge-${p.status}">${p.status}</span></td>
+                <td>${anexoBtn}</td>
                 <td style="text-align: right;">
                     <button class="btn-icon" onclick="window.editarProcesso('${p.id}')">
                         ${editIcon}
