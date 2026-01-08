@@ -661,3 +661,77 @@ tr:hover td {
     border-radius: 8px;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
 }
+
+
+/* --- RESPONSIVIDADE (MOBILE & TABLET) --- */
+
+@media (max-width: 768px) {
+    /* 1. Transforma o layout lateral em vertical (Menu em cima, conteúdo embaixo) */
+    .layout-container {
+        flex-direction: column;
+        height: auto;
+        /* Remove altura fixa para permitir rolagem */
+    }
+    /* 2. Ajusta a Sidebar para ficar no topo */
+    .sidebar {
+        width: 100%;
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+        padding: 15px;
+        flex-direction: row;
+        /* Itens lado a lado */
+        align-items: center;
+        flex-wrap: wrap;
+        /* Quebra linha se faltar espaço */
+        gap: 10px;
+    }
+    .sidebar-brand {
+        margin-bottom: 0;
+        margin-right: 15px;
+        font-size: 1rem;
+    }
+    .nav-item {
+        margin-bottom: 0;
+        padding: 8px 12px;
+        font-size: 0.85rem;
+    }
+    /* Tira o margin-top auto do botão sair no mobile para ele não quebrar o layout */
+    .nav-item[style*="margin-top: auto"] {
+        margin-top: 0 !important;
+        margin-left: auto;
+        /* Empurra para a direita se possível */
+    }
+    /* 3. Ajusta o conteúdo principal */
+    .main-content {
+        padding: 20px 15px;
+        /* Menos espaçamento nas bordas */
+        height: auto;
+    }
+    /* 4. Tabelas com rolagem horizontal (Essencial para não quebrar a tela) */
+    .card {
+        overflow-x: auto;
+    }
+    table {
+        min-width: 600px;
+        /* Garante que a tabela tenha um tamanho mínimo legível */
+    }
+    /* 5. Ajusta o Modal para caber na tela do celular */
+    .modal-content {
+        width: 90%;
+        padding: 20px;
+        max-height: 90vh;
+        overflow-y: auto;
+        /* Permite rolar dentro do modal se for muito comprido */
+    }
+    /* 6. Ajusta o título e botão de ação */
+    .main-content>div:first-child {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+    #btn-novo {
+        width: 100%;
+        /* Botão "Novo Processo" ocupa toda a largura */
+    }
+}

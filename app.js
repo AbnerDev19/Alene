@@ -1,9 +1,8 @@
 /* --- IMPORTAÇÕES DO FIREBASE --- */
+// Note que removemos a importação do 'firebase-storage' pois não vamos usar mais
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getFirestore, collection, getDocs, addDoc, updateDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { getAuth, signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-// Importamos o Storage
-import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
 /* --- CONFIGURAÇÃO --- */
 const firebaseConfig = {
@@ -19,11 +18,10 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
-const storage = getStorage(app); // Inicializa Storage
 
 const COLLECTION_NAME = 'processos';
 
-/* --- UTILITÁRIOS VISUAIS --- */
+/* --- UTILITÁRIOS --- */
 const formatData = (dataISO) => {
     if (!dataISO) return '-';
     const [ano, mes, dia] = dataISO.split('-');
@@ -47,6 +45,16 @@ function toggleLoading(isLoading) {
     }
 }
 
+// NOVO: Função que converte Arquivo para Texto (Base64)
+const convertFileToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+    });
+};
+
 /* --- CAMADA DE SERVIÇO --- */
 const Service = {
     getAllData: async() => {
@@ -59,33 +67,18 @@ const Service = {
             return lista;
         } catch (error) {
             console.error("Erro ao buscar dados:", error);
+            // showToast("Erro de conexão. Verifique o console.");
             return [];
         }
     },
 
-    // Função dedicada ao Upload
-    uploadArquivo: async(arquivo) => {
-        if (!arquivo) return null;
-        try {
-            // Cria uma referência única: uploads/nome-do-arquivo-timestamp
-            const storageRef = ref(storage, `uploads/${Date.now()}-${arquivo.name}`);
-            const snapshot = await uploadBytes(storageRef, arquivo);
-            const downloadURL = await getDownloadURL(snapshot.ref);
-            return downloadURL;
-        } catch (error) {
-            console.error("Erro no upload:", error);
-            throw new Error("Falha ao subir anexo");
-        }
-    },
-
-    salvarProcesso: async(id, numero, responsavel, status, anexoUrl) => {
+    salvarProcesso: async(id, numero, responsavel, status, anexoBase64) => {
         try {
             const dados = { numero, responsavel, status };
 
-            // Só atualiza a URL se um novo arquivo foi enviado (anexoUrl não nulo)
-            // Se for undefined, o Firebase ignora no update, mantendo o antigo.
-            if (anexoUrl) {
-                dados.anexoUrl = anexoUrl;
+            // Se tiver um novo anexo (texto base64), salva ele
+            if (anexoBase64) {
+                dados.anexoUrl = anexoBase64;
             }
 
             if (id) {
@@ -94,7 +87,6 @@ const Service = {
                 showToast("Processo atualizado!");
             } else {
                 dados.dataEntrada = new Date().toISOString().split('T')[0];
-                // Se for novo e não tiver anexo, salva vazio
                 if (!dados.anexoUrl) dados.anexoUrl = "";
                 await addDoc(collection(db, COLLECTION_NAME), dados);
                 showToast("Novo processo criado!");
@@ -102,7 +94,13 @@ const Service = {
             return true;
         } catch (e) {
             console.error("Erro ao salvar:", e);
-            showToast("Erro ao salvar no banco.");
+            if (e.code === 'permission-denied') {
+                showToast("Erro: Permissão negada. Você está logado?");
+            } else if (e.toString().includes("exceeds the maximum allowed size")) {
+                showToast("Erro: Arquivo muito grande para este método. Use arquivos menores.");
+            } else {
+                showToast("Erro ao salvar no banco.");
+            }
             return false;
         }
     },
@@ -195,8 +193,7 @@ function setupModal(listaAtual) {
             const btnSave = newForm.querySelector('button[type="submit"]');
             const originalText = btnSave.innerText;
 
-            // Feedback de Upload
-            btnSave.innerText = "Subindo anexo e salvando...";
+            btnSave.innerText = "Processando...";
             btnSave.disabled = true;
 
             const id = document.getElementById('inp-id').value;
@@ -206,14 +203,18 @@ function setupModal(listaAtual) {
             const arquivoInput = document.getElementById('inp-anexo');
 
             try {
-                // 1. Tenta fazer upload se tiver arquivo
-                let urlAnexo = null;
+                // 1. Converte o arquivo localmente para texto (Base64)
+                let anexoString = null;
                 if (arquivoInput.files.length > 0) {
-                    urlAnexo = await Service.uploadArquivo(arquivoInput.files[0]);
+                    const file = arquivoInput.files[0];
+                    if (file.size > 800 * 1024) { // Limite de segurança de ~800KB
+                        throw new Error("Arquivo muito grande. Use arquivos menores que 800KB.");
+                    }
+                    anexoString = await convertFileToBase64(file);
                 }
 
-                // 2. Salva no banco (com ou sem url nova)
-                const sucesso = await Service.salvarProcesso(id, num, resp, status, urlAnexo);
+                // 2. Salva no banco
+                const sucesso = await Service.salvarProcesso(id, num, resp, status, anexoString);
 
                 if (sucesso) {
                     modal.classList.add('hidden');
@@ -237,7 +238,7 @@ function openModal(proc = null) {
 
     form.reset();
     document.getElementById('inp-id').value = "";
-    linkDiv.innerHTML = ""; // Limpa aviso de link
+    linkDiv.innerHTML = "";
 
     if (proc) {
         title.innerText = "Editar Processo";
@@ -246,9 +247,8 @@ function openModal(proc = null) {
         document.getElementById('inp-resp').value = proc.responsavel;
         document.getElementById('inp-status').value = proc.status;
 
-        // Mostra se já tem anexo
         if (proc.anexoUrl) {
-            linkDiv.innerHTML = `📎 Este processo já possui um anexo salvo. Enviar outro irá substituir.`;
+            linkDiv.innerHTML = `📎 Processo com anexo salvo.`;
         }
     } else {
         title.innerText = "Novo Processo";
@@ -284,11 +284,10 @@ function renderTable(lista) {
     const editIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>`;
 
     lista.forEach(p => {
-        // Lógica do botão de anexo
         let anexoBtn = '<span style="color:#ccc; font-size:0.8rem;">Sem anexo</span>';
         if (p.anexoUrl) {
-            // target="_blank" abre em outra aba/tela
-            anexoBtn = `<a href="${p.anexoUrl}" target="_blank" class="btn btn-sm" style="font-size:0.75rem; padding:4px 8px;">📎 Ver Arquivo</a>`;
+            // Se for base64, funciona igual um link normal no navegador
+            anexoBtn = `<a href="${p.anexoUrl}" target="_blank" class="btn btn-sm" style="font-size:0.75rem; padding:4px 8px;">📎 Abrir</a>`;
         }
 
         tbody.innerHTML += `
