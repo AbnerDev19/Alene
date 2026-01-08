@@ -16,13 +16,24 @@
         <p style="color: var(--text-secondary); margin-bottom: 20px;">Controle Administrativo</p>
 
         <form id="form-login">
-            <input type="text" placeholder="Usuário" required>
-            <input type="password" placeholder="Senha" required>
+            <input type="email" id="email" placeholder="E-mail" required>
+            <input type="password" id="password" placeholder="Senha" required>
             <button type="submit" class="btn btn-primary" style="width: 100%;">Entrar</button>
         </form>
+
+        <div style="display: flex; align-items: center; margin: 20px 0; color: #888; font-size: 0.8rem;">
+            <div style="flex: 1; height: 1px; background: #eee;"></div>
+            <span style="padding: 0 10px;">OU</span>
+            <div style="flex: 1; height: 1px; background: #eee;"></div>
+        </div>
+
+        <button id="btn-google" class="btn btn-google">
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18" alt="G">
+            Entrar com Google
+        </button>
     </div>
 
-    <script src="app.js"></script>
+    <script type="module" src="app.js"></script>
 
 </body>
 

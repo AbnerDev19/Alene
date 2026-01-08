@@ -1,14 +1,33 @@
-/* --- CONFIGURAÇÃO E UTILITÁRIOS --- */
+/* --- IMPORTAÇÕES DO FIREBASE (Via CDN Modular) --- */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, collection, getDocs, addDoc, updateDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getAuth, signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+/* --- CONFIGURAÇÃO --- */
+const firebaseConfig = {
+    apiKey: "AIzaSyDAjX4LQ8FER3k6lkFFzSVJdgnlx-WqdC0",
+    authDomain: "projeto-alene.firebaseapp.com",
+    projectId: "projeto-alene",
+    storageBucket: "projeto-alene.firebasestorage.app",
+    messagingSenderId: "159211713850",
+    appId: "1:159211713850:web:20c721981195a2c7690c03",
+    measurementId: "G-P61PNL7H7Z"
+};
+
+// Inicializa Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
 const COLLECTION_NAME = 'processos';
 
-// Função para formatar data (YYYY-MM-DD -> DD/MM/YYYY)
+/* --- UTILITÁRIOS VISUAIS --- */
 const formatData = (dataISO) => {
     if (!dataISO) return '-';
     const [ano, mes, dia] = dataISO.split('-');
     return `${dia}/${mes}/${ano}`;
 };
 
-// Feedback Visual (Toasts)
 function showToast(message) {
     const container = document.getElementById('toast-area');
     if (!container) return;
@@ -19,72 +38,56 @@ function showToast(message) {
     setTimeout(() => toast.remove(), 3000);
 }
 
-// Loading State (UX Humana)
 function toggleLoading(isLoading) {
-    // Tenta achar tabelas ou grids para mostrar loading
     const tableBody = document.getElementById('table-body') || document.getElementById('rep-body');
-    if (tableBody) {
-        if (isLoading) {
-            tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px;">🔄 Sincronizando com a nuvem...</td></tr>';
-        }
+    if (tableBody && isLoading) {
+        tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px;">🔄 Carregando dados...</td></tr>';
     }
 }
 
-/* --- CAMADA DE SERVIÇO (CONECTADA AO FIREBASE) --- */
+/* --- CAMADA DE SERVIÇO --- */
 const Service = {
-    // Busca todos os dados do Firebase
     getAllData: async() => {
         try {
-            const { collection, getDocs } = window.FirestoreFunctions;
-            const db = window.FirebaseDB;
-
             const querySnapshot = await getDocs(collection(db, COLLECTION_NAME));
             let lista = [];
-            querySnapshot.forEach((doc) => {
-                // Junta o ID do documento com os dados dele
-                lista.push({ id: doc.id, ...doc.data() });
+            querySnapshot.forEach((docSnap) => {
+                lista.push({ id: docSnap.id, ...docSnap.data() });
             });
             return lista;
         } catch (error) {
             console.error("Erro ao buscar dados:", error);
-            showToast("Erro de conexão com o servidor.");
+            showToast("Erro de conexão. Verifique se você está logado.");
             return [];
         }
     },
 
-    // Salva ou Atualiza
     salvarProcesso: async(id, numero, responsavel, status) => {
         try {
-            const { collection, addDoc, doc, updateDoc } = window.FirestoreFunctions;
-            const db = window.FirebaseDB;
             const dados = { numero, responsavel, status };
-
             if (id) {
-                // EDITAR
                 const docRef = doc(db, COLLECTION_NAME, id);
                 await updateDoc(docRef, dados);
-                showToast("Processo atualizado na nuvem!");
+                showToast("Processo atualizado!");
             } else {
-                // CRIAR NOVO
                 dados.dataEntrada = new Date().toISOString().split('T')[0];
                 await addDoc(collection(db, COLLECTION_NAME), dados);
-                showToast("Processo salvo na nuvem!");
+                showToast("Novo processo criado!");
             }
             return true;
         } catch (e) {
             console.error("Erro ao salvar:", e);
-            showToast("Erro ao salvar. Tente novamente.");
+            showToast("Erro ao salvar. Permissão negada?");
             return false;
         }
     },
 
-    // Calcula Estatísticas (Feito no Front para economizar leituras)
     calcularKPIs: (lista) => {
         const pendentes = lista.filter(p => p.status === 'Pendente').length;
         const autorizados = lista.filter(p => p.status === 'Autorizado').length;
         const rejeitados = lista.filter(p => p.status === 'Rejeitado').length;
         const analisados = autorizados + rejeitados;
-        const finalizados = analisados; // Regra de negócio atual
+        const finalizados = analisados;
 
         return {
             total: lista.length,
@@ -93,80 +96,99 @@ const Service = {
             rejeitados,
             analisados,
             finalizados,
-            listaCompleta: lista.sort((a, b) => b.dataEntrada.localeCompare(a.dataEntrada)) // Ordena por data
+            listaCompleta: lista.sort((a, b) => b.dataEntrada.localeCompare(a.dataEntrada))
         };
     }
 };
 
 /* --- CONTROLADOR DE PÁGINAS --- */
-// Aguarda o Firebase carregar antes de iniciar
 window.addEventListener('load', () => {
-    // Pequeno delay para garantir que o module do Firebase carregou
-    setTimeout(() => {
-        const pageId = document.body.id;
-        if (pageId === 'page-dashboard') initDashboard();
-        if (pageId === 'page-relatorios') initRelatorios();
-        if (pageId === 'page-login') initLogin();
-    }, 500);
+    const pageId = document.body.id;
+    if (pageId === 'page-dashboard') initDashboard();
+    if (pageId === 'page-relatorios') initRelatorios();
+    if (pageId === 'page-login') initLogin();
 });
 
+/* --- LÓGICA: LOGIN --- */
 function initLogin() {
-    document.getElementById('form-login').addEventListener('submit', (e) => {
-        e.preventDefault();
-        window.location.href = 'dashboard.html';
-    });
+    // Login com Email/Senha (Simples)
+    const formLogin = document.getElementById('form-login');
+    if (formLogin) {
+        formLogin.addEventListener('submit', async(e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const pass = document.getElementById('password').value;
+
+            try {
+                await signInWithEmailAndPassword(auth, email, pass);
+                window.location.href = 'dashboard.html';
+            } catch (error) {
+                alert("Erro no login: " + error.message);
+            }
+        });
+    }
+
+    // Login com Google
+    const btnGoogle = document.getElementById('btn-google');
+    if (btnGoogle) {
+        btnGoogle.addEventListener('click', async() => {
+            const provider = new GoogleAuthProvider();
+            try {
+                await signInWithPopup(auth, provider);
+                window.location.href = 'dashboard.html';
+            } catch (error) {
+                console.error(error);
+                alert("Erro ao entrar com Google.");
+            }
+        });
+    }
 }
 
-// --- LÓGICA: DASHBOARD ---
+/* --- LÓGICA: DASHBOARD --- */
 async function initDashboard() {
     toggleLoading(true);
-
-    // 1. Busca dados
     const lista = await Service.getAllData();
     const stats = Service.calcularKPIs(lista);
-
-    // 2. Renderiza
     renderKPIs(stats);
     renderTable(stats.listaCompleta);
-
-    // 3. Configura Modal
     setupModal(lista);
 }
 
 function setupModal(listaAtual) {
     const modal = document.getElementById('modal-novo');
     const formProc = document.getElementById('form-processo');
+    const btnNovo = document.getElementById('btn-novo');
+    const btnCancel = document.getElementById('btn-cancel');
 
-    document.getElementById('btn-novo').onclick = () => openModal();
-    document.getElementById('btn-cancel').onclick = () => modal.classList.add('hidden');
-    modal.onclick = (e) => { if (e.target === modal) modal.classList.add('hidden'); };
+    if (btnNovo) btnNovo.onclick = () => openModal();
+    if (btnCancel) btnCancel.onclick = () => modal.classList.add('hidden');
+    if (modal) modal.onclick = (e) => { if (e.target === modal) modal.classList.add('hidden'); };
 
-    // Remove listeners antigos para evitar duplicação (cloneNode trick)
-    const newForm = formProc.cloneNode(true);
-    formProc.parentNode.replaceChild(newForm, formProc);
+    if (formProc) {
+        const newForm = formProc.cloneNode(true);
+        formProc.parentNode.replaceChild(newForm, formProc);
 
-    newForm.addEventListener('submit', async(e) => {
-        e.preventDefault();
-        const btnSave = newForm.querySelector('button[type="submit"]');
-        const originalText = btnSave.innerText;
-        btnSave.innerText = "Salvando...";
-        btnSave.disabled = true;
+        newForm.addEventListener('submit', async(e) => {
+            e.preventDefault();
+            const btnSave = newForm.querySelector('button[type="submit"]');
+            const originalText = btnSave.innerText;
+            btnSave.innerText = "Salvando...";
+            btnSave.disabled = true;
 
-        const id = document.getElementById('inp-id').value;
-        const num = document.getElementById('inp-numero').value;
-        const resp = document.getElementById('inp-resp').value;
-        const status = document.getElementById('inp-status').value;
+            const id = document.getElementById('inp-id').value;
+            const num = document.getElementById('inp-numero').value;
+            const resp = document.getElementById('inp-resp').value;
+            const status = document.getElementById('inp-status').value;
 
-        const sucesso = await Service.salvarProcesso(id, num, resp, status);
-
-        if (sucesso) {
-            modal.classList.add('hidden');
-            initDashboard(); // Recarrega tudo
-        }
-
-        btnSave.innerText = originalText;
-        btnSave.disabled = false;
-    });
+            const sucesso = await Service.salvarProcesso(id, num, resp, status);
+            if (sucesso) {
+                modal.classList.add('hidden');
+                initDashboard();
+            }
+            btnSave.innerText = originalText;
+            btnSave.disabled = false;
+        });
+    }
 }
 
 function openModal(proc = null) {
@@ -187,23 +209,25 @@ function openModal(proc = null) {
     modal.classList.remove('hidden');
 }
 
-// Função Global para editar (precisa buscar o objeto na lista atual)
+// Tornar global para acesso via onclick no HTML (necessário por ser module)
 window.editarProcesso = async function(id) {
-    // Busca apenas o item localmente para abrir o modal rápido
     const lista = await Service.getAllData();
     const proc = lista.find(p => p.id === id);
     if (proc) openModal(proc);
 };
 
 function renderKPIs(stats) {
-    document.getElementById('kpi-analisados').innerText = stats.analisados;
-    document.getElementById('kpi-pendentes').innerText = stats.pendentes;
-    document.getElementById('kpi-autorizados').innerText = stats.autorizados;
-    document.getElementById('kpi-finalizados').innerText = stats.finalizados;
+    if (document.getElementById('kpi-analisados')) {
+        document.getElementById('kpi-analisados').innerText = stats.analisados;
+        document.getElementById('kpi-pendentes').innerText = stats.pendentes;
+        document.getElementById('kpi-autorizados').innerText = stats.autorizados;
+        document.getElementById('kpi-finalizados').innerText = stats.finalizados;
+    }
 }
 
 function renderTable(lista) {
     const tbody = document.getElementById('table-body');
+    if (!tbody) return;
     tbody.innerHTML = '';
 
     if (lista.length === 0) {
@@ -211,10 +235,9 @@ function renderTable(lista) {
         return;
     }
 
-    lista.forEach(p => {
-        const editIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>`;
+    const editIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>`;
 
-        // Passamos o ID como string
+    lista.forEach(p => {
         tbody.innerHTML += `
             <tr>
                 <td><strong>${p.numero}</strong></td>
@@ -222,7 +245,7 @@ function renderTable(lista) {
                 <td>${p.responsavel}</td>
                 <td><span class="badge badge-${p.status}">${p.status}</span></td>
                 <td style="text-align: right;">
-                    <button class="btn-icon" onclick="editarProcesso('${p.id}')">
+                    <button class="btn-icon" onclick="window.editarProcesso('${p.id}')">
                         ${editIcon}
                     </button>
                 </td>
@@ -231,7 +254,7 @@ function renderTable(lista) {
     });
 }
 
-// --- LÓGICA: RELATÓRIOS ---
+/* --- LÓGICA: RELATÓRIOS --- */
 async function initRelatorios() {
     toggleLoading(true);
     const lista = await Service.getAllData();

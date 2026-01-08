@@ -305,3 +305,359 @@ tr:hover td {
     border-radius: 8px;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
 }
+
+
+/* --- style.css --- */
+
+:root {
+    --font-main: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    --bg-body: #F7F6F3;
+    --bg-surface: #FFFFFF;
+    --bg-sidebar: #F7F6F3;
+    --text-primary: #37352F;
+    --text-secondary: #000000;
+    --border-color: #E0E0E0;
+    /* Cores do Usuário (Ajustado para um amarelo mais escuro/sóbrio) */
+    --accent-color: #bf9b0b;
+    --accent-hover: #9e8009;
+    /* Status Badges */
+    --status-pendente-bg: #FBF3DB;
+    --status-pendente-text: #D9730D;
+    --status-aprovado-bg: #EDF3EC;
+    --status-aprovado-text: #448361;
+    --status-rejeitado-bg: #FBE4E4;
+    --status-rejeitado-text: #D44C47;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--font-main);
+    background-color: var(--bg-body);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+}
+
+
+/* --- ESTILOS ESPECÍFICOS DE LOGIN (NOVO) --- */
+
+.login-body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: var(--bg-body);
+}
+
+.login-box {
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+}
+
+
+/* --- ESTILOS GERAIS --- */
+
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.btn {
+    padding: 8px 16px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-surface);
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.btn-primary {
+    background-color: var(--accent-color);
+    color: #FFF;
+    border: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.btn-primary:hover {
+    background-color: var(--accent-hover);
+    transform: translateY(-1px);
+}
+
+
+/* Botão do Google (Novo) */
+
+.btn-google {
+    background: #fff;
+    color: #333;
+    margin-top: 10px;
+    width: 100%;
+    position: relative;
+}
+
+.btn-google:hover {
+    background: #f5f5f5;
+}
+
+.btn-icon {
+    padding: 6px;
+    border: none;
+    background: transparent;
+    color: #888;
+    border-radius: 4px;
+}
+
+.btn-icon:hover {
+    background: #eee;
+    color: var(--accent-color);
+}
+
+input,
+select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-surface);
+    margin-bottom: 12px;
+    transition: border 0.2s;
+}
+
+input:focus,
+select:focus {
+    outline: none;
+    border-color: var(--accent-color);
+}
+
+.card {
+    background: var(--bg-surface);
+    padding: 24px;
+    border-radius: 6px;
+    box-shadow: rgba(15, 15, 15, 0.05) 0px 0px 0px 1px, rgba(15, 15, 15, 0.1) 0px 2px 4px;
+    transition: box-shadow 0.2s;
+}
+
+
+/* --- TOAST NOTIFICATION --- */
+
+.toast-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1000;
+}
+
+.toast {
+    background: #333;
+    color: white;
+    padding: 12px 24px;
+    border-radius: 6px;
+    margin-top: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    animation: slideIn 0.3s ease forwards;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+
+/* --- LAYOUT SIDEBAR --- */
+
+.layout-container {
+    display: flex;
+    height: 100vh;
+}
+
+.sidebar {
+    width: 240px;
+    background: var(--bg-sidebar);
+    border-right: 1px solid var(--border-color);
+    padding: 20px 10px;
+    display: flex;
+    flex-direction: column;
+}
+
+.sidebar-brand {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 30px;
+    padding-left: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-primary);
+}
+
+.nav-item {
+    padding: 10px 12px;
+    margin-bottom: 4px;
+    border-radius: 4px;
+    color: #555;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: 0.2s;
+}
+
+.nav-item:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: #000;
+}
+
+.nav-item.active {
+    background: rgba(191, 155, 11, 0.15);
+    /* Ajustado para o novo tom */
+    color: var(--accent-color);
+    font-weight: 600;
+}
+
+.main-content {
+    flex: 1;
+    padding: 40px 60px;
+    overflow-y: auto;
+}
+
+
+/* --- DASHBOARD GRID --- */
+
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.kpi-title {
+    font-size: 0.85rem;
+    color: #666;
+    margin-bottom: 8px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.kpi-value {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+
+/* --- TABELAS --- */
+
+table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.9rem;
+}
+
+th {
+    text-align: left;
+    padding: 12px 16px;
+    border-bottom: 2px solid var(--border-color);
+    color: #666;
+    font-weight: 600;
+}
+
+td {
+    padding: 16px;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: middle;
+}
+
+tr:last-child td {
+    border-bottom: none;
+}
+
+tr:hover td {
+    background-color: #fafafa;
+}
+
+.badge {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+}
+
+.badge-Pendente {
+    background: var(--status-pendente-bg);
+    color: var(--status-pendente-text);
+}
+
+.badge-Autorizado {
+    background: var(--status-aprovado-bg);
+    color: var(--status-aprovado-text);
+}
+
+.badge-Rejeitado {
+    background: var(--status-rejeitado-bg);
+    color: var(--status-rejeitado-text);
+}
+
+
+/* --- RELATÓRIOS --- */
+
+.bar-container {
+    width: 100%;
+    background: #eee;
+    height: 8px;
+    border-radius: 4px;
+    margin-top: 5px;
+    overflow: hidden;
+}
+
+.bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.5s ease;
+}
+
+
+/* --- MODAL --- */
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(3px);
+    z-index: 999;
+}
+
+.modal-content {
+    width: 420px;
+    padding: 32px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
