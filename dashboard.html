@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | SysAdmin</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body id="page-dashboard">
+
+    <div class="layout-container">
+        <nav class="sidebar">
+            <div class="sidebar-brand">🗂️ SysAdmin</div>
+            <a href="dashboard.html" class="nav-item active">📊 Dashboard</a>
+            <a href="relatorios.html" class="nav-item">📃 Relatórios</a>
+            <a href="index.html" class="nav-item" style="margin-top: auto;">🚪 Sair</a>
+        </nav>
+
+        <main class="main-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px;">
+                <div>
+                    <h1>Controle de Processos</h1>
+                    <p style="color: #666; margin-top: 5px;">Visão geral da fila de trabalho</p>
+                </div>
+                <button id="btn-novo" class="btn btn-primary">+ Novo Processo</button>
+            </div>
+
+            <div class="kpi-grid">
+                <div class="card">
+                    <div class="kpi-title">Total Analisado</div>
+                    <div class="kpi-value" id="kpi-analisados">0</div>
+                </div>
+                <div class="card">
+                    <div class="kpi-title">Na Caixa (Pendentes)</div>
+                    <div class="kpi-value" id="kpi-pendentes" style="color: #D9730D;">0</div>
+                </div>
+                <div class="card">
+                    <div class="kpi-title">Autorizações Emitidas</div>
+                    <div class="kpi-value" id="kpi-autorizados" style="color: #448361;">0</div>
+                </div>
+                <div class="card">
+                    <div class="kpi-title">Processos Finalizados</div>
+                    <div class="kpi-value" id="kpi-finalizados">0</div>
+                </div>
+            </div>
+
+            <div class="card" style="padding: 0;">
+                <div style="padding: 20px; border-bottom: 1px solid #eee;">
+                    <h3 style="font-weight: 600;">Processos Recentes</h3>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Número</th>
+                            <th>Entrada</th>
+                            <th>Responsável</th>
+                            <th>Status</th>
+                            <th style="text-align: right;">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body">
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <div id="modal-novo" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h2 id="modal-title" style="margin-bottom: 20px;">Novo Processo</h2>
+            <form id="form-processo">
+                <input type="hidden" id="inp-id">
+
+                <label style="display:block; margin-bottom:5px; font-weight:500;">Número do Processo</label>
+                <input type="text" id="inp-numero" placeholder="Ex: 2024/001" required>
+
+                <label style="display:block; margin-bottom:5px; font-weight:500;">Responsável</label>
+                <input type="text" id="inp-resp" placeholder="Nome do Analista" required>
+
+                <label style="display:block; margin-bottom:5px; font-weight:500;">Status Atual</label>
+                <select id="inp-status">
+                    <option value="Pendente">Pendente (Na Caixa)</option>
+                    <option value="Autorizado">Autorizado</option>
+                    <option value="Rejeitado">Rejeitado</option>
+                </select>
+
+                <div style="display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end;">
+                    <button type="button" id="btn-cancel" class="btn">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div id="toast-area" class="toast-container"></div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatórios | SysAdmin</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body id="page-relatorios">
+
+    <div class="layout-container">
+        <nav class="sidebar">
+            <div class="sidebar-brand">🗂️ SysAdmin</div>
+            <a href="dashboard.html" class="nav-item">📊 Dashboard</a>
+            <a href="relatorios.html" class="nav-item active">📃 Relatórios</a>
+            <a href="index.html" class="nav-item" style="margin-top: auto;">🚪 Sair</a>
+        </nav>
+
+        <main class="main-content">
+            <div style="margin-bottom: 30px; border-bottom: 1px solid #ddd; padding-bottom: 20px; display:flex; justify-content:space-between;">
+                <div>
+                    <h1>Relatório Gerencial</h1>
+                    <p style="color: var(--text-secondary);">Análise de produtividade e status</p>
+                </div>
+                <button class="btn" onclick="window.print()">🖨️ Imprimir</button>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px;">
+                <div class="card">
+                    <h3>Balanço Geral</h3>
+                    <br>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>Total de Processos Cadastrados:</span>
+                        <strong id="rep-total">0</strong>
+                    </div>
+                    <div style="width: 100%; height: 1px; background: #eee; margin: 10px 0;"></div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>Taxa de Saída (Finalizados):</span>
+                        <strong id="rep-taxa" style="font-size: 1.5rem; color: var(--accent-color);">0%</strong>
+                    </div>
+                    <p style="font-size: 0.8rem; color: #888; margin-top: 5px;">
+                        Percentual de processos que já saíram da caixa (Autorizados ou Rejeitados) em relação ao total.
+                    </p>
+                </div>
+
+                <div class="card">
+                    <h3>Distribuição por Status</h3>
+
+                    <div style="margin-top: 15px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
+                            <span>Pendentes (Na Caixa)</span> <strong id="val-pend">0</strong>
+                        </div>
+                        <div class="bar-container">
+                            <div id="bar-pend" class="bar-fill" style="background: var(--status-pendente-text); width: 0%;"></div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 15px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
+                            <span>Autorizados</span> <strong id="val-auth">0</strong>
+                        </div>
+                        <div class="bar-container">
+                            <div id="bar-auth" class="bar-fill" style="background: var(--status-aprovado-text); width: 0%;"></div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 15px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
+                            <span>Rejeitados</span> <strong id="val-rej">0</strong>
+                        </div>
+                        <div class="bar-container">
+                            <div id="bar-rej" class="bar-fill" style="background: var(--status-rejeitado-text); width: 0%;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Histórico Completo</h3>
+                <br>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Entrada</th>
+                            <th>Número</th>
+                            <th>Responsável</th>
+                            <th>Situação Atual</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rep-body">
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
